@@ -56,11 +56,12 @@ fs.readFile("data/mots.txt", "UTF8", function (erreur, contenu) {
         .replace(/æ/gu, "ae")
         .replace(/œ/gu, "oe")
         .replace(/\p{Diacritic}/gu, "")
+        .replace("\r", "")
     )
     .filter(
       (mot) =>
         !(mot[0] === mot[0].toUpperCase()) &&
-        mot.length >= 6 &&
+        mot.length >= 4 &&
         mot.length <= 10 &&
         !mot.includes("!") &&
         !mot.includes(" ") &&
@@ -89,9 +90,9 @@ fs.readFile("data/mots.txt", "UTF8", function (erreur, contenu) {
   ecrireListeNettoyee(dictionnaire);
   ecrireDictionnaire(dictionnaire);
 
-  let longueurs = [6, 7, 8, 9, 10];
+  const NUMBERS = [4, 5, 6, 7, 8, 9, 10];
   let initialesPossibles = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "L", "M", "N", "O", "P", "R", "S", "T", "U", "V"];
-  for (let longueur of longueurs) {
+  for (let longueur of NUMBERS) {
     for (let initiale of initialesPossibles) {
       let dicoFiltre = dictionnaire.filter((mot) => mot.length == longueur && mot.toUpperCase().startsWith(initiale));
       console.log("Longueur du dictionnaire : " + dicoFiltre.length);
