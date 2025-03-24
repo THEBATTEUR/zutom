@@ -1,0 +1,126 @@
+name: Deploy Docker Image
+
+on:
+  workflow_run:
+    workflows: ["Build and Push Docker Image"]
+    types:
+      - completed
+  push:
+    tags:
+      - 'v*'
+
+env:
+  DOCKER_IMAGE: thebatteur/zutom
+  CONTAINER_NAME: zutom-container
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'push' }}
+    steps:
+      # Check if Docker is installed and install it if not
+      # TODO: Look for a full deployment on a fresh server as a final goal
+      # (Maybe including Apache/Nginx or HAProxy config)
+      - name: Connect to server and setup Docker
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: ${{ secrets.REMOTE_SERVER_ADDRESS }}
+          username: ${{ secrets.REMOTE_SERVER_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            if ! command -v docker &> /dev/null; then
+              echo "Installing Docker..."
+            
+              sudo apt-get update -qq
+              sudo apt-get upgrade -y -qq
+            
+              sudo apt-get install -y -qq \
+                ca-certificates \
+                curl \
+                gnupg \
+                lsb-release \
+                apt-transport-https \
+                software-properties-common
+            
+              sudo install -m 0755 -d /etc/apt/keyrings
+              curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+              sudo chmod a+r /etc/apt/keyrings/docker.gpg
+            
+              echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" | \
+                sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+              sudo apt-get update -qq
+            
+              sudo apt-get install -y -qq \
+                docker-ce \
+                docker-ce-cli \
+                containerd.io \
+                docker-buildx-plugin \
+                docker-compose-plugin
+            
+              sudo systemctl start docker
+              sudo systemctl enable docker
+            
+              sudo usermod -aG docker $USER
+              newgrp docker
+              echo "Installed docker"
+            else
+              echo "Docker already installed"
+            fi
+            
+            docker --version
+      
+
+      - name: Deploy container
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: ${{ secrets.REMOTE_SERVER_ADDRESS }}
+          username: ${{ secrets.REMOTE_SERVER_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # Extract tag version
+            VERSION=${GITHUB_REF#refs/tags/v}
+            
+            # Save the old image for rollback if fail
+            docker tag ${{ env.DOCKER_IMAGE }}:latest ${{ env.DOCKER_IMAGE }}:previous || true
+            
+            # Pull the new image
+            docker pull ${{ env.DOCKER_IMAGE }}:$VERSION
+            docker pull ${{ env.DOCKER_IMAGE }}:latest
+            
+            # Stop & del the old container
+            docker stop ${{ env.CONTAINER_NAME }} || true
+            docker rm ${{ env.CONTAINER_NAME }} || true
+            
+            # Start the new container
+            docker run -d --name ${{ env.CONTAINER_NAME }} -p 80:80 ${{ env.DOCKER_IMAGE }}:$VERSION
+            
+            # Check container's health
+            HEALTH_CHECK_RETRIES=5
+            for i in $(seq 1 $HEALTH_CHECK_RETRIES); do
+              if docker inspect --format='{{.State.Health.Status}}' ${{ env.CONTAINER_NAME }} | grep -q healthy; then
+                echo "Container is healthy"
+                exit 0
+              fi
+              echo "Waiting for container to be healthy... (attempt $i/$HEALTH_CHECK_RETRIES)"
+              sleep 10
+            done
+            
+            echo "Container health check failed. Rolling back..."
+            docker stop ${{ env.CONTAINER_NAME }}
+            docker rm ${{ env.CONTAINER_NAME }}
+            docker run -d --name ${{ env.CONTAINER_NAME }} -p 80:80 ${{ env.DOCKER_IMAGE }}:previous
+            exit 1
+
+      - name: Cleanup old images
+        if: success()
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: ${{ secrets.REMOTE_SERVER_ADDRESS }}
+          username: ${{ secrets.REMOTE_SERVER_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # Clean old unused images for more than 7d (168h)
+            docker image prune -a --force --filter "until=168h"
+            
+            # Only keep last 5 images
+            docker images --format '{{.Repository}}:{{.Tag}}' | grep '${{ env.DOCKER_IMAGE }}:v' | sort -V | head -n -5 | xargs -r docker rmi
