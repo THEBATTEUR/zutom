@@ -1,0 +1,11 @@
+config/
+data/*
+!data/mots.txt
+public/js/
+public/mots/**
+!public/mots/index.html
+node_modules/
+ts/mots/listeMotsATrouver.ts
+ts/mots/listeMotsProposables.*
+cron.*.sh
+/.idea
