@@ -11,9 +11,9 @@ function ecrireDictionnaire(dictionnaire, suffixeNom) {
   contenu += "public static readonly Dictionnaire: Array<string> = [\n";
   contenu += dictionnaire
     .map(function (mot) {
-      return '"' + mot.toUpperCase() + '",';
+      return '"' + mot.toUpperCase().replaceAll("\r", "") + '"';
     })
-    .join("\n");
+
   contenu += "\n];";
   contenu += "\n}";
   let nomFichier = "ts/mots/listeMotsProposables";
@@ -93,9 +93,15 @@ fs.readFile("data/mots.txt", "UTF8", function (erreur, contenu) {
   let initialesPossibles = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "L", "M", "N", "O", "P", "R", "S", "T", "U", "V"];
   for (let longueur of longueurs) {
     for (let initiale of initialesPossibles) {
-      let dicoFiltre = dictionnaire.filter((mot) => mot.length === longueur && mot.toUpperCase().startsWith(initiale));
+      let dicoFiltre = dictionnaire.filter((mot) => mot.length == longueur && mot.toUpperCase().startsWith(initiale));
       console.log("Longueur du dictionnaire : " + dicoFiltre.length);
-      ecrireDictionnaire(dicoFiltre, "." + longueur + "." + initiale);
+      if (dicoFiltre.length > 0) {
+        if (dicoFiltre[0].length !== longueur) {
+          console.error("Erreur ! La longueur du premier mot ne correspond pas à la longueur attendue.")
+          return;
+        }
+        ecrireDictionnaire(dicoFiltre, "." + longueur + "." + initiale);
+      }
     }
   }
 });
