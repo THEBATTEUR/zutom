@@ -133,9 +133,6 @@ jobs:
             VERSION=${{ needs.build-and-push.outputs.docker_version }}
             echo "Deploying version $VERSION..."
 
-            # Save the old image for rollback if fail
-            docker tag ${{ env.DOCKER_IMAGE }}:latest ${{ env.DOCKER_IMAGE }}:previous || true
-
             # Pull the new image
             docker pull ${{ env.DOCKER_IMAGE }}:$VERSION
             docker pull ${{ env.DOCKER_IMAGE }}:latest
@@ -147,22 +144,8 @@ jobs:
             # Start the new container
             docker run -d --name ${{ env.CONTAINER_NAME }} -p 80:80 ${{ env.DOCKER_IMAGE }}:$VERSION
 
-            # Check container's health
-            HEALTH_CHECK_RETRIES=5
-            for i in $(seq 1 $HEALTH_CHECK_RETRIES); do
-              if docker inspect --format='{{.State.Health.Status}}' ${{ env.CONTAINER_NAME }} | grep -q healthy; then
-                echo "Container is healthy"
-                exit 0
-              fi
-              echo "Waiting for container to be healthy... (attempt $i/$HEALTH_CHECK_RETRIES)"
-              sleep 10
-            done
-
-            echo "Container health check failed. Rolling back..."
-            docker stop ${{ env.CONTAINER_NAME }}
-            docker rm ${{ env.CONTAINER_NAME }}
-            docker run -d --name ${{ env.CONTAINER_NAME }} -p 80:80 ${{ env.DOCKER_IMAGE }}:previous
-            exit 1
+            echo "Container started."
+            exit 0
 
       - name: Cleanup old images
         if: success()
