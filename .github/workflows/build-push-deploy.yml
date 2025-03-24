@@ -14,6 +14,8 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    outputs:
+      docker_version: ${{ steps.extract_version.outputs.version }}
     steps:
 
       - name: Set up QEMU
@@ -52,7 +54,20 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Extract version
+        id: extract_version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+            VERSION=${VERSION#v}  # Supprime le 'v' initial si présent
+          else
+            VERSION="latest"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "DOCKER_VERSION=$VERSION" >> $GITHUB_ENV
+
   deploy:
+    needs: build-and-push
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'push' }}
     steps:
@@ -115,8 +130,7 @@ jobs:
           username: ${{ secrets.REMOTE_SERVER_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            # Extract tag version
-            VERSION=${GITHUB_REF#refs/tags/v}
+            VERSION=${{ needs.build-and-push.outputs.docker_version }}
             echo "Deploying version $VERSION..."
 
             # Save the old image for rollback if fail
