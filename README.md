@@ -1,10 +1,19 @@
-# SUTOM
+# Zutom
 
-Jeu de lettres en ligne (et en français) basé sur Wordle. Le jeu se trouve à l'adresse https://sutom.nocle.fr
+Zutom est un fork de [Sutom](https://framagit.org/JonathanMM/sutom) fait par [JonathanMM](https://mastodon.social/@JonathanMM) pour le serveur GTA RP [SOZ](https://github.com/SOZ-Faut-etre-Sub/SOZ-FiveM-Server).
 
-## Contributions
+En effet son jeu est intégré dans le [ZPhone](https://github.com/SOZ-Faut-etre-Sub/SOZ-FiveM-Server/blob/e95abd2c3d584e26dabc7af510a238a5ce874f47/resources/%5Bsoz%5D/soz-core/src/nui/components/Phone/apps/zutom/ZutomApp.tsx#L12) tel quel. Le but de ce repo est d'y apporter des modifications pour les joueurs réguliers et l'adapter pour l'intégrer complètement dans l'univers du serveur.
 
-Tout d'abord, merci si vous contribuez :) Pour l'instant, le mieux, c'est de créer un ticket quand vous voyez un bug, ça me permettra de trier et de prioriser tout ce que je dois faire. Comme la base de code n'est pas aussi propre que je voudrais, merci de créer un ticket et d'attendre un retour de ma part ( @JonathanMM ) avant de vous lancer à corps perdu dans le code.
+---
+## Contribution
+
+Dans le Projet GitHub, il y a un tableau avec quelques idées et une petite todo list déjà faite. N'hésitez pas à aller y faire un tour pour contribuer / proposer des idées ! :D
+
+---
+## Déploiement Continu (CD)
+Un workflow se déclanche lorsqu'il y a un nouveau tag sur la branch main. Il build l'image Docker, la push dans un [repertory Docker](https://hub.docker.com/repository/docker/thebatteur/zutom/) et update l'image sur un [serveur à moi](https://zutom.thebatteur.fr). 
+
+---
 
 ## Développement
 
@@ -62,9 +71,6 @@ docker build -t sutom .
 docker run -it --rm -p 4000:4000 sutom
 ```
 
-## Autres infos et remerciements
+---
 
-- Le dictionnaire utilisé est celui de [Grammalecte](https://grammalecte.net/dictionary.php?prj=fr). Merci à GaranceAmarante pour le script.
-- Merci à Emmanuel pour m'avoir fourni des mots à trouver.
-- Merci à tous les gens qui me remontent des bugs et qui me donnent des idées, ça m'aide beaucoup :)
-- Merci à toutes les personnes qui jouent, c'est une belle récompense que vous me donnez.
+Copyright (c) 2022 JonathanMM
